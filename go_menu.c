@@ -29,6 +29,10 @@ int yed_plugin_boot(yed_plugin *self) {
     go_menu_key.fn   = go_menu_key_handler;
     yed_plugin_add_event_handler(self, go_menu_key);
 
+    if (yed_get_var("go-menu-persistent-items") == NULL) {
+        yed_set_var("go-menu-persistent-items", "");
+    }
+
     return 0;
 }
 
@@ -63,6 +67,9 @@ void go_menu(int n_args, char **args) {
     if (pitems != NULL) {
         pitems_cpy = strdup(pitems);
         for (bname = strtok(pitems_cpy, " "); bname != NULL; bname = strtok(NULL, " ")) {
+            if (row > 1) {
+                yed_buffer_add_line_no_undo(buff);
+            }
             for (i = 0; i < strlen(bname); i += 1) {
                 yed_append_to_line_no_undo(buff, row, G(bname[i]));
             }
