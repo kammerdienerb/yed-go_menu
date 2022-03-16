@@ -151,7 +151,7 @@ void go_menu_key_handler(yed_event *event) {
             bname_cpy = strdup(bname);
             bname_cpy[strlen(bname_cpy) - 11] = '\0';
             YEXE("buffer", bname_cpy);
-            free(bname);
+            free(bname_cpy);
         }else {
             YEXE("buffer", bname);
         }
