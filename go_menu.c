@@ -1,5 +1,4 @@
 #include <yed/plugin.h>
-#include <time.h>
 
 #define ARGS_GO_MENU_BUFF "*go-menu", (BUFF_SPECIAL | BUFF_RD_ONLY)
 
