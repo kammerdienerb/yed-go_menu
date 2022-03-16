@@ -5,6 +5,8 @@
 void go_menu(int n_args, char **args);
 void go_menu_key_handler(yed_event *event);
 void go_menu_line_handler(yed_event *event);
+void go_menu_frame_handler(yed_event *event);
+int  _go_menu_if_modified(char *path);
 
 yed_buffer *get_or_make_buffer(char *name, int flags) {
     yed_buffer *buff;
@@ -20,6 +22,7 @@ yed_buffer *get_or_make_buffer(char *name, int flags) {
 int yed_plugin_boot(yed_plugin *self) {
     yed_event_handler go_menu_key;
     yed_event_handler go_menu_line;
+    yed_event_handler go_menu_frame;
 
     YED_PLUG_VERSION_CHECK();
 
@@ -35,8 +38,16 @@ int yed_plugin_boot(yed_plugin *self) {
     go_menu_line.fn   = go_menu_line_handler;
     yed_plugin_add_event_handler(self, go_menu_line);
 
+    go_menu_frame.kind = EVENT_FRAME_PRE_UPDATE;
+    go_menu_frame.fn   = go_menu_frame_handler;
+    yed_plugin_add_event_handler(self, go_menu_frame);
+
     if (yed_get_var("go-menu-persistent-items") == NULL) {
         yed_set_var("go-menu-persistent-items", "");
+    }
+
+    if (yed_get_var("go-menu-modified") == NULL) {
+        yed_set_var("go-menu-modified", "Yes");
     }
 
     return 0;
@@ -115,6 +126,7 @@ void go_menu_key_handler(yed_event *event) {
     yed_buffer *buff;
     yed_line   *line;
     char       *bname;
+    char       *bname_cpy;
 
     buff = get_or_make_buffer(ARGS_GO_MENU_BUFF);
 
@@ -134,7 +146,15 @@ void go_menu_key_handler(yed_event *event) {
         if (bname[0] != '*') {
             YEXE("special-buffer-prepare-jump-focus", "*go-menu");
         }
-        YEXE("buffer", bname);
+
+        if (yed_var_is_truthy("go-menu-modified") && strstr(bname, " <modified>")) {
+            bname_cpy = strdup(bname);
+            bname_cpy[strlen(bname_cpy) - 11] = '\0';
+            YEXE("buffer", bname_cpy);
+            free(bname_cpy);
+        }else {
+            YEXE("buffer", bname);
+        }
     } else {
         YEXE("special-buffer-prepare-unfocus", "*go-menu");
     }
@@ -145,9 +165,13 @@ void go_menu_line_handler(yed_event *event) {
     yed_attrs *ait;
     char      *s;
     yed_attrs  attr;
+    yed_attrs  attr_m;
     char      *pitems;
     char      *pitems_cpy;
     char      *bname;
+    char      *bname_cpy;
+    int        modified;
+    int        loc;
 
     if (event->frame         == NULL
     ||  event->frame->buffer == NULL
@@ -160,7 +184,10 @@ void go_menu_line_handler(yed_event *event) {
     s = yed_get_line_text(frame->buffer, event->row);
     if (s == NULL) { return; }
 
-    attr = ZERO_ATTR;
+    attr   = ZERO_ATTR;
+    attr_m = ZERO_ATTR;
+
+    attr_m = yed_active_style_get_attention();
 
     if (strlen(s) > 0 && *s == '*') {
         attr = yed_active_style_get_code_constant();
@@ -183,9 +210,70 @@ void go_menu_line_handler(yed_event *event) {
         attr.flags |= ATTR_BOLD;
     }
 
+    modified = 0;
+    if (yed_var_is_truthy("go-menu-modified") && strstr(s, " <modified>")) modified = 1;
+
+    loc = 0;
     array_traverse(event->line_attrs, ait) {
-        yed_combine_attrs(ait, &attr);
+        if (modified == 1 && loc >= (strlen(s) - 11)) {
+            yed_combine_attrs(ait, &attr_m);
+        }else{
+            yed_combine_attrs(ait, &attr);
+        }
+        loc++;
     }
 
     free(s);
+}
+
+void go_menu_frame_handler(yed_event *event) {
+    if (!yed_var_is_truthy("go-menu-modified")) { return; }
+
+    yed_frame *frame;
+    char      *s;
+    char      *bname;
+
+    if (event->frame         == NULL
+    ||  event->frame->buffer == NULL
+    ||  event->frame->buffer != get_or_make_buffer(ARGS_GO_MENU_BUFF)) {
+        return;
+    }
+
+    frame = event->frame;
+
+    for (int i = 1; i < yed_buff_n_lines(frame->buffer); i++) {
+        s = yed_get_line_text(frame->buffer, i);
+
+        if (s == NULL) { return; }
+
+        bname = strdup(s);
+        if (strstr(bname, " <modified>")) {
+            bname[strlen(bname) - 11] = '\0';
+        }
+
+        if (_go_menu_if_modified(bname)) {
+            bname = strcat(bname, " <modified>");
+        }
+
+        frame->buffer->flags &= !BUFF_RD_ONLY;
+        yed_line_clear_no_undo(frame->buffer, i);
+        yed_buff_insert_string_no_undo(frame->buffer, bname, i, 1);
+        frame->buffer->flags &= BUFF_RD_ONLY;
+
+        free(bname);
+        free(s);
+    }
+}
+
+int _go_menu_if_modified(char *path) {
+    yed_buffer *buff;
+
+    buff = yed_get_buffer(path);
+    if (buff != NULL) {
+        if ((buff->flags & BUFF_MODIFIED)  &&
+           !(buff->flags & BUFF_SPECIAL)) {
+            return 1;
+        }
+    }
+    return 0;
 }
