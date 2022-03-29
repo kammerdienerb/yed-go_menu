@@ -231,7 +231,7 @@ void go_menu_frame_handler(yed_event *event) {
 
     yed_frame *frame;
     char      *s;
-    char      *bname;
+    char       bname[4096];
 
     if (event->frame         == NULL
     ||  event->frame->buffer == NULL
@@ -246,7 +246,8 @@ void go_menu_frame_handler(yed_event *event) {
 
         if (s == NULL) { return; }
 
-        bname = strdup(s);
+        bname[0] = 0;
+        strcat(bname, s);
         if (strstr(bname, " <modified>")) {
             bname[strlen(bname) - 11] = '\0';
         }
@@ -260,7 +261,6 @@ void go_menu_frame_handler(yed_event *event) {
         yed_buff_insert_string_no_undo(frame->buffer, bname, i, 1);
         frame->buffer->flags &= BUFF_RD_ONLY;
 
-        free(bname);
         free(s);
     }
 }
