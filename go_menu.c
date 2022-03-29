@@ -253,7 +253,7 @@ void go_menu_frame_handler(yed_event *event) {
         }
 
         if (_go_menu_if_modified(bname)) {
-            bname = strcat(bname, " <modified>");
+            strcat(bname, " <modified>");
         }
 
         frame->buffer->flags &= !BUFF_RD_ONLY;
