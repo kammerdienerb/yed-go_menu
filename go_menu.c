@@ -143,16 +143,15 @@ void go_menu_key_handler(yed_event *event) {
         line = yed_buff_get_line(buff, ys->active_frame->cursor_line);
         array_zero_term(line->chars);
         bname = array_data(line->chars);
-        if (bname[0] != '*') {
-            YEXE("special-buffer-prepare-jump-focus", "*go-menu");
-        }
+        
+        YEXE("special-buffer-prepare-jump-focus", bname);
 
         if (yed_var_is_truthy("go-menu-modified") && strstr(bname, " <modified>")) {
             bname_cpy = strdup(bname);
             bname_cpy[strlen(bname_cpy) - 11] = '\0';
             YEXE("buffer", bname_cpy);
             free(bname_cpy);
-        }else {
+        } else {
             YEXE("buffer", bname);
         }
     } else {
