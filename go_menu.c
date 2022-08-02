@@ -6,6 +6,7 @@ void go_menu(int n_args, char **args);
 void go_menu_key_handler(yed_event *event);
 void go_menu_line_handler(yed_event *event);
 void go_menu_frame_handler(yed_event *event);
+void go_menu_buff_handler(yed_event *event);
 int  _go_menu_if_modified(char *path);
 
 yed_buffer *get_or_make_buffer(char *name, int flags) {
@@ -19,41 +20,7 @@ yed_buffer *get_or_make_buffer(char *name, int flags) {
     return buff;
 }
 
-int yed_plugin_boot(yed_plugin *self) {
-    yed_event_handler go_menu_key;
-    yed_event_handler go_menu_line;
-    yed_event_handler go_menu_frame;
-
-    YED_PLUG_VERSION_CHECK();
-
-    get_or_make_buffer(ARGS_GO_MENU_BUFF);
-
-    yed_plugin_set_command(self, "go-menu", go_menu);
-
-    go_menu_key.kind = EVENT_KEY_PRESSED;
-    go_menu_key.fn   = go_menu_key_handler;
-    yed_plugin_add_event_handler(self, go_menu_key);
-
-    go_menu_line.kind = EVENT_LINE_PRE_DRAW;
-    go_menu_line.fn   = go_menu_line_handler;
-    yed_plugin_add_event_handler(self, go_menu_line);
-
-    go_menu_frame.kind = EVENT_FRAME_PRE_UPDATE;
-    go_menu_frame.fn   = go_menu_frame_handler;
-    yed_plugin_add_event_handler(self, go_menu_frame);
-
-    if (yed_get_var("go-menu-persistent-items") == NULL) {
-        yed_set_var("go-menu-persistent-items", "");
-    }
-
-    if (yed_get_var("go-menu-modified") == NULL) {
-        yed_set_var("go-menu-modified", "Yes");
-    }
-
-    return 0;
-}
-
-void go_menu(int n_args, char **args) {
+static void update_menu(void) {
     array_t                                        pitems_array;
     const char                                    *pitems;
     char                                          *pitems_cpy;
@@ -115,7 +82,55 @@ next:;
     free_string_array(pitems_array);
 
     buff->flags |= BUFF_RD_ONLY;
+}
 
+int yed_plugin_boot(yed_plugin *self) {
+    yed_event_handler go_menu_key;
+    yed_event_handler go_menu_line;
+    yed_event_handler go_menu_frame;
+    yed_event_handler go_menu_buff;
+
+    YED_PLUG_VERSION_CHECK();
+
+    get_or_make_buffer(ARGS_GO_MENU_BUFF);
+
+    yed_plugin_set_command(self, "go-menu", go_menu);
+
+    go_menu_key.kind = EVENT_KEY_PRESSED;
+    go_menu_key.fn   = go_menu_key_handler;
+    yed_plugin_add_event_handler(self, go_menu_key);
+
+    go_menu_line.kind = EVENT_LINE_PRE_DRAW;
+    go_menu_line.fn   = go_menu_line_handler;
+    yed_plugin_add_event_handler(self, go_menu_line);
+
+    go_menu_frame.kind = EVENT_FRAME_PRE_UPDATE;
+    go_menu_frame.fn   = go_menu_frame_handler;
+    yed_plugin_add_event_handler(self, go_menu_frame);
+
+    go_menu_buff.kind = EVENT_BUFFER_POST_LOAD;
+    go_menu_buff.fn   = go_menu_buff_handler;
+    yed_plugin_add_event_handler(self, go_menu_buff);
+
+    go_menu_buff.kind = EVENT_BUFFER_POST_DELETE;
+    go_menu_buff.fn   = go_menu_buff_handler;
+    yed_plugin_add_event_handler(self, go_menu_buff);
+
+    if (yed_get_var("go-menu-persistent-items") == NULL) {
+        yed_set_var("go-menu-persistent-items", "");
+    }
+
+    if (yed_get_var("go-menu-modified") == NULL) {
+        yed_set_var("go-menu-modified", "Yes");
+    }
+
+    update_menu();
+
+    return 0;
+}
+
+void go_menu(int n_args, char **args) {
+    update_menu();
     YEXE("special-buffer-prepare-focus", "*go-menu");
     if (ys->active_frame) {
         YEXE("buffer", "*go-menu");
@@ -143,7 +158,7 @@ void go_menu_key_handler(yed_event *event) {
         line = yed_buff_get_line(buff, ys->active_frame->cursor_line);
         array_zero_term(line->chars);
         bname = array_data(line->chars);
-        
+
         YEXE("special-buffer-prepare-jump-focus", bname);
 
         if (yed_var_is_truthy("go-menu-modified") && strstr(bname, " <modified>")) {
@@ -263,6 +278,8 @@ void go_menu_frame_handler(yed_event *event) {
         free(s);
     }
 }
+
+void go_menu_buff_handler(yed_event *event) { update_menu(); }
 
 int _go_menu_if_modified(char *path) {
     yed_buffer *buff;
