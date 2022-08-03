@@ -2,7 +2,10 @@
 
 #define ARGS_GO_MENU_BUFF "*go-menu", (BUFF_SPECIAL | BUFF_RD_ONLY)
 
+static int do_update;
+
 void go_menu(int n_args, char **args);
+void go_menu_draw_handler(yed_event *event);
 void go_menu_key_handler(yed_event *event);
 void go_menu_line_handler(yed_event *event);
 void go_menu_frame_handler(yed_event *event);
@@ -30,6 +33,8 @@ static void update_menu(void) {
     tree_it(yed_buffer_name_t, yed_buffer_ptr_t)   bit;
     int                                            row;
     int                                            i;
+
+    if (!do_update) { return; }
 
     buff = get_or_make_buffer(ARGS_GO_MENU_BUFF);
 
@@ -82,9 +87,12 @@ next:;
     free_string_array(pitems_array);
 
     buff->flags |= BUFF_RD_ONLY;
+
+    do_update = 0;
 }
 
 int yed_plugin_boot(yed_plugin *self) {
+    yed_event_handler go_menu_draw;
     yed_event_handler go_menu_key;
     yed_event_handler go_menu_line;
     yed_event_handler go_menu_frame;
@@ -95,6 +103,10 @@ int yed_plugin_boot(yed_plugin *self) {
     get_or_make_buffer(ARGS_GO_MENU_BUFF);
 
     yed_plugin_set_command(self, "go-menu", go_menu);
+
+    go_menu_draw.kind = EVENT_PRE_DRAW_EVERYTHING;
+    go_menu_draw.fn   = go_menu_draw_handler;
+    yed_plugin_add_event_handler(self, go_menu_draw);
 
     go_menu_key.kind = EVENT_KEY_PRESSED;
     go_menu_key.fn   = go_menu_key_handler;
@@ -108,15 +120,11 @@ int yed_plugin_boot(yed_plugin *self) {
     go_menu_frame.fn   = go_menu_frame_handler;
     yed_plugin_add_event_handler(self, go_menu_frame);
 
-    go_menu_buff.kind = EVENT_BUFFER_POST_LOAD;
+    go_menu_buff.kind = EVENT_BUFFER_CREATED;
     go_menu_buff.fn   = go_menu_buff_handler;
     yed_plugin_add_event_handler(self, go_menu_buff);
 
     go_menu_buff.kind = EVENT_BUFFER_POST_DELETE;
-    go_menu_buff.fn   = go_menu_buff_handler;
-    yed_plugin_add_event_handler(self, go_menu_buff);
-
-    go_menu_buff.kind = EVENT_BUFFER_CREATED;
     go_menu_buff.fn   = go_menu_buff_handler;
     yed_plugin_add_event_handler(self, go_menu_buff);
 
@@ -128,18 +136,19 @@ int yed_plugin_boot(yed_plugin *self) {
         yed_set_var("go-menu-modified", "Yes");
     }
 
-    update_menu();
+    do_update = 1;
 
     return 0;
 }
 
 void go_menu(int n_args, char **args) {
-    update_menu();
     YEXE("special-buffer-prepare-focus", "*go-menu");
     if (ys->active_frame) {
         YEXE("buffer", "*go-menu");
     }
 }
+
+void go_menu_draw_handler(yed_event *event) { update_menu(); }
 
 void go_menu_key_handler(yed_event *event) {
     yed_buffer *buff;
@@ -285,7 +294,7 @@ void go_menu_frame_handler(yed_event *event) {
 
 void go_menu_buff_handler(yed_event *event) {
     if (event->buffer && strcmp(event->buffer->name, "*go-menu") == 0) { return; }
-    update_menu();
+    do_update = 1;
 }
 
 int _go_menu_if_modified(char *path) {
