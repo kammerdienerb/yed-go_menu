@@ -283,7 +283,10 @@ void go_menu_frame_handler(yed_event *event) {
     }
 }
 
-void go_menu_buff_handler(yed_event *event) { update_menu(); }
+void go_menu_buff_handler(yed_event *event) {
+    if (event->buffer && strcmp(event->buffer->name, "*go-menu") == 0) { return; }
+    update_menu();
+}
 
 int _go_menu_if_modified(char *path) {
     yed_buffer *buff;
