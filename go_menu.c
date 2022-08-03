@@ -116,6 +116,10 @@ int yed_plugin_boot(yed_plugin *self) {
     go_menu_buff.fn   = go_menu_buff_handler;
     yed_plugin_add_event_handler(self, go_menu_buff);
 
+    go_menu_buff.kind = EVENT_BUFFER_CREATED;
+    go_menu_buff.fn   = go_menu_buff_handler;
+    yed_plugin_add_event_handler(self, go_menu_buff);
+
     if (yed_get_var("go-menu-persistent-items") == NULL) {
         yed_set_var("go-menu-persistent-items", "");
     }
