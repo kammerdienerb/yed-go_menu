@@ -198,6 +198,7 @@ void go_menu_line_handler(yed_event *event) {
     char      *bname;
     char      *bname_cpy;
     int        modified;
+    int        len;
     int        loc;
 
     if (event->frame         == NULL
@@ -240,14 +241,9 @@ void go_menu_line_handler(yed_event *event) {
     modified = 0;
     if (yed_var_is_truthy("go-menu-modified") && strstr(s, " <modified>")) modified = 1;
 
-    loc = 0;
-    array_traverse(event->line_attrs, ait) {
-        if (modified == 1 && loc >= (strlen(s) - 11)) {
-            yed_combine_attrs(ait, &attr_m);
-        }else{
-            yed_combine_attrs(ait, &attr);
-        }
-        loc++;
+    len = strlen(s);
+    for (loc = 0; loc < len; loc += 1) {
+        yed_eline_combine_col_attrs(event, loc + 1, (loc >= len - 11 && modified) ? &attr_m : &attr);
     }
 
     free(s);
