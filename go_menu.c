@@ -33,7 +33,6 @@ static void update_menu(void) {
     tree_it(yed_buffer_name_t, yed_buffer_ptr_t)   bit;
     int                                            row;
     int                                            i;
-    yed_glyph                                      g;
 
     if (!do_update) { return; }
 
@@ -67,8 +66,7 @@ static void update_menu(void) {
             yed_buffer_add_line_no_undo(buff);
         }
         for (i = 0; i < strlen(bname); i += 1) {
-            g = G(bname[i]);
-            yed_append_to_line_no_undo(buff, row, &g);
+            yed_append_to_line_no_undo(buff, row, GLYPH(&bname[i]));
         }
         row += 1;
 next:;
@@ -80,8 +78,7 @@ next:;
             yed_buffer_add_line_no_undo(buff);
         }
         for (i = 0; i < strlen(bname); i += 1) {
-            g = G(bname[i]);
-            yed_append_to_line_no_undo(buff, row, &g);
+            yed_append_to_line_no_undo(buff, row, GLYPH(&bname[i]));
         }
         row += 1;
     }
